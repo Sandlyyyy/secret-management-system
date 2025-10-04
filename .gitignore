@@ -1,29 +1,15 @@
-# Виртуальные окружения
-env/
-venv/
-.venv/
-
-# Файлы окружения
-.env
-.env.local
-
-# Python
+# .gitignore
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-pip-log.txt
-
-# IDE
+env/
+venv/
+.venv/
+.env
+*.sqlite3
+*.db
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-.dockerignore
+*.log
