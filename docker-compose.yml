@@ -2,6 +2,8 @@
 
 services:
   backend:
+seversion: "3.9"
+
 services:
   openbao:
     image: openbao/openbao:2.4.1
@@ -9,21 +11,34 @@ services:
     ports:
       - "8080:8080"
     environment:
-      OPENBAO_ROOT_TOKEN: "root-token"
+      OPENBAO_ROOT_TOKEN: "root-token"  # укажи свой
     volumes:
       - openbao_data:/openbao/data
 
   postgres:
     image: postgres:15
     container_name: postgres
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres-password"  # укажи свой
+      POSTGRES_DB: "secretmanager"
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_PASSWORD: "postgres-password"
-      POSTGRES_USER: "postgres"
-      POSTGRES_DB: "secretmanager"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - openbao
+      - postgres
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres-password@postgres:5432/secretmanager"
+      OPENBAO_URL: "http://openbao:8080"
+      OPENBAO_ROOT_TOKEN: "root-token"
 
   nginx:
     image: nginx:latest
@@ -31,23 +46,9 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d
     depends_on:
       - backend
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: backend
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: "postgresql://postgres:postgres-password@postgres:5432/secretmanager"
-      OPENBAO_URL: "http://openbao:8080"
-    depends_on:
-      - postgres
-      - openbao
 
 volumes:
   openbao_data:

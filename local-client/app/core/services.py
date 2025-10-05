@@ -1,5 +1,6 @@
 from typing import Optional, List
-from .database import Database, User, Secret, AuditLog, SecretType
+from .database import Database
+from .database_models import User, Secret, AuditLog, SecretType
 
 class AuthService:
     def __init__(self, database: Database):
