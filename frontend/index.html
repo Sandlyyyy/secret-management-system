@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Vault Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* БАЗОВЫЕ СТИЛИ */
+        :root {
+            --primary-dark: #1a365d;
+            --primary-main: #2d3748;
+            --primary-light: #4a5568;
+            --accent-success: #48bb78;
+            --accent-warning: #ed8936;
+            --accent-danger: #f56565;
+            --accent-info: #4299e1;
+            --bg-dark: #0f1419;
+            --bg-main: #1e252b;
+            --bg-light: #2a3138;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --border-color: #2d3748;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .portal-body {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .logo i {
+            color: var(--accent-info);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+            list-style: none;
+        }
+
+        .nav-item {
+            margin: 0.25rem 1rem;
+        }
+
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active a {
+            background: var(--primary-main);
+            color: var(--text-primary);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+            background: var(--accent-warning);
+            color: white;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            background: var(--bg-main);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* HEADER */
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .content-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* SEARCH AND FILTERS */
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: var(--accent-info);
+            color: white;
+        }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-light);
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .stat-icon.warning { background: var(--accent-warning); }
+        .stat-icon.success { background: var(--accent-success); }
+        .stat-icon.danger { background: var(--accent-danger); }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* REQUESTS */
+        .requests-container {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .request-item {
+            background: var(--bg-dark);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .request-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .request-user {
+            color: var(--text-secondary);
+        }
+
+        .request-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        .status-pending { background: var(--accent-warning); }
+        .status-approved { background: var(--accent-success); }
+        .status-rejected { background: var(--accent-danger); }
+
+        .request-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-info);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--accent-success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--primary-light);
+            color: var(--text-primary);
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        /* SECRETS */
+        .secrets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .secret-card {
+            background: var(--bg-light);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .secret-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .secret-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .secret-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .secret-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .secret-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* MODALS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+         // пример запроса к API backend
+  fetch('http://backend:8000/secrets/SecretName')
+    .then(response => response.json())
+    .then(data => {
+      console.log('Секрет получен:', data);
+      // здесь можно обновить элементы страницы, например:
+      document.getElementById('secretOutput').innerText = data.password;
+    })
+    .catch(err => console.error(err));
+        // 🚀 ГЛАВНЫЙ КЛАСС ПРИЛОЖЕНИЯ
+        class SecretVaultApp {
+            constructor() {
+                this.requests = [];
+                this.secrets = [];
+                this.init();
+            }
+
+            init() {
+                console.log('🚀 Инициализация приложения...');
+                this.setupMockData();
+                this.renderApp();
+                this.setupEventListeners();
+                this.showPage('requests');
+            }
+
+            // 📋 ГЕНЕРАЦИЯ HTML
+            renderApp() {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div class="portal-body">
+                        <!-- Боковая панель -->
+                        <nav class="sidebar">
+                            <div class="sidebar-header">
+                                <div class="logo">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Secret Vault</span>
+                                </div>
+                            </div>
+                            
+                            <ul class="sidebar-nav">
+                                <li class="nav-item active" data-page="requests">
+                                    <a href="#">
+                                        <i class="fas fa-clipboard-list"></i>
+                                        <span>Заявки</span>
+                                        <span class="badge" id="pendingCount">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item" data-page="secrets">
+                                    <a href="#">
+                                        <i class="fas fa-key"></i>
+                                        <span>Секреты</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <!-- Основной контент -->
+                        <main class="main-content">
+                            <!-- Страница заявок -->
+                            <div id="requestsPage" class="page active">
+                                <div class="content-header">
+                                    <h1>Управление заявками</h1>
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" id="searchRequests" placeholder="Поиск заявок...">
+                                    </div>
+                                </div>
+
+                                <div class="filter-buttons">
+                                    <button class="filter-btn active" data-filter="all">Все</button>
+                                    <button class="filter-btn" data-filter="pending">Ожидают</button>
+                                    <button class="filter-btn" data-filter="approved">Одобрены</button>
+                                    <button class="filter-btn" data-filter="rejected">Отклонены</button>
+                                </div>
+
+                                <!-- Статистика -->
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-icon warning">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="pendingStats">0</div>
+                                            <div class="stat-label">Ожидают решения</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="stat-card">
+                                        <div class="stat-icon success">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="approvedStats">0</div>
+                                            <div class="stat-label">Одобрено</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="stat-card">
+                                        <div class="stat-icon danger">
+                                            <i class="fas fa-times-circle"></i>
+                                        </div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="rejectedStats">0</div>
+                                            <div class="stat-label">Отклонено</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Список заявок -->
+                                <div class="requests-container">
+                                    <div id="requestsList">
+                                        <!-- Заявки будут здесь -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Страница секретов -->
+                            <div id="secretsPage" class="page">
+                                <div class="content-header">
+                                    <h1>Поиск секретов</h1>
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" id="searchSecrets" placeholder="Поиск секретов...">
+                                    </div>
+                                </div>
+
+                                <div class="secrets-grid" id="secretsGrid">
+                                    <!-- Секреты будут здесь -->
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+
+                    <!-- Модальное окно подтверждения -->
+                    <div id="confirmModal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 id="confirmMessage">Вы уверены?</h3>
+                                <button class="close-btn">&times;</button>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" id="confirmCancel">Отмена</button>
+                                <button class="btn btn-primary" id="confirmOk">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="secretOutput">Секрет появится здесь</div>
+                `;
+            }
+
+            // 🎯 НАСТРОЙКА ОБРАБОТЧИКОВ
+            setupEventListeners() {
+                // Навигация
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.showPage(item.dataset.page);
+                    });
+                });
+
+                // Поиск заявок
+                document.getElementById('searchRequests').addEventListener('input', (e) => {
+                    this.filterRequests(e.target.value);
+                });
+
+                // Фильтры заявок
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.filterRequestsByStatus(e.target.dataset.filter);
+                    });
+                });
+
+                // Поиск секретов
+                document.getElementById('searchSecrets').addEventListener('input', (e) => {
+                    this.searchSecrets(e.target.value);
+                });
+
+                // Подтверждение действий
+                document.getElementById('confirmOk').addEventListener('click', () => {
+                    this.confirmAction(true);
+                });
+
+                document.getElementById('confirmCancel').addEventListener('click', () => {
+                    this.confirmAction(false);
+                });
+
+                // Закрытие модальных окон
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.closeModal();
+                    });
+                });
+            }
+
+            // 📄 ПОКАЗАТЬ СТРАНИЦУ
+            showPage(pageName) {
+                // Скрыть все страницы
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+
+                // Убрать активный класс у меню
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                // Показать выбранную страницу
+                document.getElementById(pageName + 'Page').classList.add('active');
+                
+                // Активировать пункт меню
+                document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+
+                // Загрузить данные
+                if (pageName === 'requests') {
+                    this.loadRequests();
+                } else if (pageName === 'secrets') {
+                    this.loadSecrets();
+                }
+            }
+
+            // 📥 ЗАГРУЗКА ДАННЫХ
+            loadRequests() {
+                this.renderRequests(this.requests);
+                this.updateStats();
+            }
+
+            loadSecrets() {
+                this.renderSecrets(this.secrets);
+            }
+
+            // 📊 ОТОБРАЖЕНИЕ ЗАЯВОК
+            renderRequests(requests = this.requests) {
+                const container = document.getElementById('requestsList');
+                
+                if (requests.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #a0aec0;">Заявки не найдены</p>';
+                    return;
+                }
+
+                container.innerHTML = requests.map(request => `
+                    <div class="request-item">
+                        <div class="request-header">
+                            <div>
+                                <div class="request-title">${request.secretName}</div>
+                                <div class="request-user">Запросил: ${request.userName}</div>
+                            </div>
+                            <span class="request-status status-${request.status}">
+                                ${this.getStatusText(request.status)}
+                            </span>
+                        </div>
+                        <div class="request-description">
+                            ${request.description}
+                        </div>
+                        <div style="color: #a0aec0; font-size: 0.9rem; margin-bottom: 1rem;">
+                            Создано: ${this.formatDate(request.createdAt)} | Срок: ${request.duration} дней
+                        </div>
+                        ${request.status === 'pending' ? `
+                            <div class="request-actions">
+                                <button class="btn btn-success btn-sm" onclick="app.approveRequest('${request.id}')">
+                                    <i class="fas fa-check"></i> Одобрить
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="app.rejectRequest('${request.id}')">
+                                    <i class="fas fa-times"></i> Отклонить
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            }
+
+            // 🔐 ОТОБРАЖЕНИЕ СЕКРЕТОВ
+            renderSecrets(secrets = this.secrets) {
+                const container = document.getElementById('secretsGrid');
+                
+                if (secrets.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #a0aec0; grid-column: 1 / -1;">Секреты не найдены</p>';
+                    return;
+                }
+
+                container.innerHTML = secrets.map(secret => `
+                    <div class="secret-card">
+                        <div class="secret-header">
+                            <div class="secret-icon">
+                                <i class="${this.getSecretIcon(secret.type)}"></i>
+                            </div>
+                        </div>
+                        <h3 class="secret-name">${secret.name}</h3>
+                        <p class="secret-description">${secret.description}</p>
+                        <div class="secret-footer">
+                            <span style="color: #a0aec0; font-size: 0.9rem;">${this.getTypeText(secret.type)}</span>
+                            <button class="btn btn-primary btn-sm" onclick="app.requestAccess('${secret.id}')">
+                                Запросить доступ
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // ✅ ОДОБРИТЬ ЗАЯВКУ
+            async approveRequest(requestId) {
+                if (await this.showConfirm('Одобрить заявку?')) {
+                    const request = this.requests.find(r => r.id === requestId);
+                    if (request) {
+                        request.status = 'approved';
+                        this.showNotification('✅ Заявка одобрена!');
+                        this.loadRequests();
+                    }
+                }
+            }
+
+            // ❌ ОТКЛОНИТЬ ЗАЯВКУ
+            async rejectRequest(requestId) {
+                if (await this.showConfirm('Отклонить заявку?')) {
+                    const request = this.requests.find(r => r.id === requestId);
+                    if (request) {
+                        request.status = 'rejected';
+                        this.showNotification('❌ Заявка отклонена');
+                        this.loadRequests();
+                    }
+                }
+            }
+
+            // 🔑 ЗАПРОС ДОСТУПА К СЕКРЕТУ
+            async requestAccess(secretId) {
+                const secret = this.secrets.find(s => s.id === secretId);
+                if (secret && await this.showConfirm(`Запросить доступ к "${secret.name}"?`)) {
+                    this.showNotification(`📋 Запрос доступа к "${secret.name}" отправлен`);
+                }
+            }
+
+            // 🔍 ФИЛЬТРАЦИЯ ЗАЯВОК
+            filterRequests(searchTerm) {
+                if (!searchTerm) {
+                    this.renderRequests(this.requests);
+                } else {
+                    const filtered = this.requests.filter(request => 
+                        request.secretName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        request.userName.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    this.renderRequests(filtered);
+                }
+            }
+
+            filterRequestsByStatus(status) {
+                if (status === 'all') {
+                    this.renderRequests(this.requests);
+                } else {
+                    const filtered = this.requests.filter(request => request.status === status);
+                    this.renderRequests(filtered);
+                }
+            }
+
+            // 🔎 ПОИСК СЕКРЕТОВ
+            searchSecrets(searchTerm) {
+                if (!searchTerm) {
+                    this.renderSecrets(this.secrets);
+                } else {
+                    const filtered = this.secrets.filter(secret =>
+                        secret.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        secret.description.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    this.renderSecrets(filtered);
+                }
+            }
+
+            // 📊 ОБНОВЛЕНИЕ СТАТИСТИКИ
+            updateStats() {
+                const pending = this.requests.filter(r => r.status === 'pending').length;
+                const approved = this.requests.filter(r => r.status === 'approved').length;
+                const rejected = this.requests.filter(r => r.status === 'rejected').length;
+
+                document.getElementById('pendingCount').textContent = pending;
+                document.getElementById('pendingStats').textContent = pending;
+                document.getElementById('approvedStats').textContent = approved;
+                document.getElementById('rejectedStats').textContent = rejected;
+            }
+
+            // 💬 ПОДТВЕРЖДЕНИЕ ДЕЙСТВИЙ
+            showConfirm(message) {
+                return new Promise((resolve) => {
+                    document.getElementById('confirmMessage').textContent = message;
+                    document.getElementById('confirmModal').style.display = 'flex';
+                    this.confirmResolve = resolve;
+                });
+            }
+
+            confirmAction(result) {
+                document.getElementById('confirmModal').style.display = 'none';
+                if (this.confirmResolve) {
+                    this.confirmResolve(result);
+                }
+            }
+
+            // 🔔 УВЕДОМЛЕНИЯ
+            showNotification(message) {
+                alert(message); // Простое уведомление
+            }
+
+            // ❌ ЗАКРЫТЬ МОДАЛЬНОЕ ОКНО
+            closeModal() {
+                document.getElementById('confirmModal').style.display = 'none';
+            }
+
+            // 🎯 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+            getStatusText(status) {
+                const statuses = {
+                    'pending': 'Ожидает',
+                    'approved': 'Одобрена', 
+                    'rejected': 'Отклонена'
+                };
+                return statuses[status] || status;
+            }
+
+            getTypeText(type) {
+                const types = {
+                    'database': 'База данных',
+                    'api': 'API Ключ',
+                    'ssh': 'SSH Ключ'
+                };
+                return types[type] || type;
+            }
+
+            getSecretIcon(type) {
+                const icons = {
+                    'database': 'fas fa-database',
+                    'api': 'fas fa-code',
+                    'ssh': 'fas fa-key'
+                };
+                return icons[type] || 'fas fa-key';
+            }
+
+            formatDate(dateString) {
+                return new Date(dateString).toLocaleDateString('ru-RU');
+            }
+
+            // 🎲 ТЕСТОВЫЕ ДАННЫЕ
+            setupMockData() {
+                this.requests = [
+                    {
+                        id: '1',
+                        secretName: 'Production Database',
+                        userName: 'Иван Петров',
+                        description: 'Нужен доступ для дебага критического бага в продакшене',
+                        status: 'pending',
+                        duration: 7,
+                        createdAt: '2024-01-15T10:00:00Z'
+                    },
+                    {
+                        id: '2', 
+                        secretName: 'API Gateway Keys',
+                        userName: 'Мария Сидорова',
+                        description: 'Разработка новой интеграции с платежной системой',
+                        status: 'approved',
+                        duration: 30,
+                        createdAt: '2024-01-14T15:30:00Z'
+                    },
+                    {
+                        id: '3',
+                        secretName: 'AWS Credentials',
+                        userName: 'Алексей Козлов',
+                        description: 'Настройка мониторинга и алертинга',
+                        status: 'pending', 
+                        duration: 14,
+                        createdAt: '2024-01-16T09:15:00Z'
+                    },
+                    {
+                        id: '4',
+                        secretName: 'Staging Database',
+                        userName: 'Ольга Новикова', 
+                        description: 'Тестирование новых функций',
+                        status: 'rejected',
+                        duration: 5,
+                        createdAt: '2024-01-13T11:20:00Z'
+                    }
+                ];
+
+                this.secrets = [
+                    {
+                        id: 's1',
+                        name: 'Production Database',
+                        description: 'Основная база данных продакшена с пользовательскими данными',
+                        type: 'database'
+                    },
+                    {
+                        id: 's2',
+                        name: 'Payment Service API',
+                        description: 'Ключи для интеграции с платежным сервисом',
+                        type: 'api'
+                    },
+                    {
+                        id: 's3',
+                        name: 'SSH Server Access',
+                        description: 'Доступ к основным серверам через SSH',
+                        type: 'ssh'
+                    },
+                    {
+                        id: 's4', 
+                        name: 'Redis Cache',
+                        description: 'Кэш-сервер для повышения производительности',
+                        type: 'database'
+                    },
+                    {
+                        id: 's5',
+                        name: 'Email Service API',
+                        description: 'Ключи для сервиса отправки email',
+                        type: 'api'
+                    }
+                ];
+            }
+        }
+
+        // 🚀 ЗАПУСК ПРИЛОЖЕНИЯ
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new SecretVaultApp();
+        });
+    </script>
+</body>
+</html>

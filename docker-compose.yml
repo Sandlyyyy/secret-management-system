@@ -2,11 +2,7 @@
 
 services:
   backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    environment:
-  version: "3.8"
+ version: "3.8"
 
 services:
   backend:
@@ -23,13 +19,13 @@ services:
       - keycloak
       - openbao
 
-frontend:
-  build:
-    context: ./nginx
-  ports:
-    - "3000:80"
-  depends_on:
-    - backend
+  frontend:
+    build:
+      context: ./nginx
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
 
   db:
     image: postgres:16

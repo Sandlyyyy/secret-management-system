@@ -1,6 +1,6 @@
 FROM nginx:alpine
 
-# Копируем фронтенд
+# Копируем фронтенд в контейнер
 COPY ../frontend /usr/share/nginx/html
 
 # Копируем конфиг Nginx
