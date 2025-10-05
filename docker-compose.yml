@@ -2,50 +2,53 @@
 
 services:
   backend:
- version: "3.8"
-
 services:
-  backend:
-    build: ./backend
+  openbao:
+    image: openbao/openbao:2.4.1
+    container_name: openbao
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      FERNET_KEY: ${FERNET_KEY}
-      KEYCLOAK_URL: ${KEYCLOAK_URL}
-      OPENBAO_URL: ${OPENBAO_URL}
-    depends_on:
-      - db
-      - keycloak
-      - openbao
+      OPENBAO_ROOT_TOKEN: "root-token"
+    volumes:
+      - openbao_data:/openbao/data
 
-  frontend:
-    build:
-      context: ./nginx
+  postgres:
+    image: postgres:15
+    container_name: postgres
     ports:
-      - "3000:80"
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "postgres-password"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "secretmanager"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
     depends_on:
       - backend
 
-  db:
-    image: postgres:16
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "8000:8000"
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: secrets
-    ports:
-      - "5432:5432"
+      DATABASE_URL: "postgresql://postgres:postgres-password@postgres:5432/secretmanager"
+      OPENBAO_URL: "http://openbao:8080"
+    depends_on:
+      - postgres
+      - openbao
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:21.1.1
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev
-    ports:
-      - "8080:8080"
-
-  openbao:
-    image: openbao/openbao:latest
-    ports:
-      - "5000:5000"
+volumes:
+  openbao_data:
+  postgres_data:
