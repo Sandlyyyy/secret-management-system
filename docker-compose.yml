@@ -1,120 +1,52 @@
-﻿version: '3.8'
-
-services:
-  # 🗄️ PostgreSQL
+﻿services:
   postgres:
     image: postgres:15
-    container_name: sms-postgres
+    container_name: postgres
     environment:
-      POSTGRES_MULTIPLE_DATABASES: keycloak_db,secret_management
-      POSTGRES_USER: postgres_admin
-      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      BACKEND_DB_PASSWORD: ${BACKEND_DB_PASSWORD}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: secretmanager
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
-    networks:
-      - sms-network
     restart: unless-stopped
 
-  # 🔑 Keycloak
-  keycloak:
-    image: quay.io/keycloak/keycloak:22.0
-    container_name: sms-keycloak
+  openbao:
+    image: openbao/openbao:2.4.1
+    container_name: openbao
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
-      KC_DB_USERNAME: keycloak_user
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      KC_PROXY: edge
-      KC_HOSTNAME_STRICT: "false"
+      OPENBAO_ROOT_TOKEN: ${OPENBAO_ROOT_TOKEN}
     ports:
       - "8080:8080"
-    networks:
-      - sms-network
-    depends_on:
-      - postgres
     restart: unless-stopped
 
-  # 🏛️ OpenBao
-  oopenbao:
-  image: openbao/openbao:2.4.1
-  container_name: openbao
-  environment:
-    - OPENBAO_ROOT_TOKEN=${OPENBAO_ROOT_TOKEN}
-  ports:
-    - "8080:8080"
-  restart: unless-stopped
-
-
-  # ⚙️ Backend Service
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
-    container_name: sms-backend
+      context: ./backend
+    container_name: backend
     environment:
-      DATABASE_URL: postgresql://backend_user:${BACKEND_DB_PASSWORD}@postgres:5432/secret_management
-      KEYCLOAK_SERVER_URL: http://keycloak:8080
-      KEYCLOAK_REALM: secret-management
-      KEYCLOAK_CLIENT_ID: backend-service
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_BACKEND_SECRET}
-      OPENBAO_URL: http://openbao:8200
+      DATABASE_URL: postgres://admin:${POSTGRES_PASSWORD}@postgres:5432/secretmanager
+      OPENBAO_URL: http://openbao:8080
       OPENBAO_TOKEN: ${OPENBAO_ROOT_TOKEN}
-      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8000:8000"
-    volumes:
-      - ../backend:/app
-    networks:
-      - sms-network
     depends_on:
       - postgres
-      - keycloak
       - openbao
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
-  # 🌐 Web Portal (React)
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: sms-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      REACT_APP_API_URL: http://localhost:8000/api
-      REACT_APP_KEYCLOAK_URL: http://localhost:8080
-    networks:
-      - sms-network
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  # 🚪 Nginx Gateway
   nginx:
-    image: nginx:alpine
-    container_name: sms-nginx
+    image: nginx:latest
+    container_name: nginx
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    networks:
-      - sms-network
+      - ./nginx/conf.d:/etc/nginx/conf.d
     depends_on:
       - backend
-      - frontend
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  openbao_data:
-
-networks:
-  sms-network:
-    driver: bridge
