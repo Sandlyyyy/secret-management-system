@@ -1,48 +1,39 @@
-﻿version: '3.9'  # можно опустить, но для совместимости оставим
+﻿version: "3.8"
 
 services:
-  openbao:
-    image: openbao/openbao:2.4.1
-    container_name: openbao
-    environment:
-      - OPENBAO_ROOT_TOKEN=root123   # мастер-токен для dev
-    ports:
-      - "8080:8080"
-    volumes:
-      - openbao_data:/openbao/data
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin123
-      - POSTGRES_DB=secretmanager
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   backend:
-    build:
-      context: ./backend
-    container_name: backend
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    environment:
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/secretmanager
-      - OPENBAO_URL=http://openbao:8080
-      - OPENBAO_TOKEN=root123
+    build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      - db
+      - keycloak
       - openbao
-    volumes:
-      - ./backend:/app
-    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/secrets
+      FERNET_KEY: "YOUR_GENERATED_KEY_HERE"
+      KEYCLOAK_URL: "http://keycloak:8080"
+      OPENBAO_URL: "http://openbao:5000"
 
-volumes:
-  openbao_data:
-  postgres_data:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secrets
+    ports:
+      - "5432:5432"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8080:8080"
+
+  openbao:
+    image: openbao/openbao:latest
+    ports:
+      - "5000:5000"
