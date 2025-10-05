@@ -41,7 +41,7 @@ services:
 
   # 🏛️ OpenBao
   openbao:
-    image: openbao/openbao:1.8.0
+    image: openbao/openbao:2.4.1
     container_name: sms-openbao
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: ${OPENBAO_ROOT_TOKEN}
