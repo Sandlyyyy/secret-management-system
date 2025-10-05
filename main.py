@@ -1,13 +1,15 @@
 from fastapi import FastAPI
+from db import database, models
+from api import secrets
 
-# создаём объект app, который uvicorn ищет
 app = FastAPI(title="Secret Management System")
+
+# Создаем таблицы при старте (для MVP)
+models.Base.metadata.create_all(bind=database.engine)
+
+# Подключаем роутеры
+app.include_router(secrets.router)
 
 @app.get("/")
 def root():
-    return {"message": "Secret Management System API is running"}
-
-# для удобного запуска через python main.py
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    return {"message": "Secret Manager Backend is running"}
