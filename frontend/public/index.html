@@ -413,6 +413,15 @@
     <div id="app"></div>
 
     <script>
+         // пример запроса к API backend
+  fetch('http://backend:8000/secrets/SecretName')
+    .then(response => response.json())
+    .then(data => {
+      console.log('Секрет получен:', data);
+      // здесь можно обновить элементы страницы, например:
+      document.getElementById('secretOutput').innerText = data.password;
+    })
+    .catch(err => console.error(err));
         // 🚀 ГЛАВНЫЙ КЛАСС ПРИЛОЖЕНИЯ
         class SecretVaultApp {
             constructor() {
@@ -550,6 +559,7 @@
                             </div>
                         </div>
                     </div>
+                    <div id="secretOutput">Секрет появится здесь</div>
                 `;
             }
 
