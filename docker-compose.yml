@@ -1,8 +1,7 @@
 ﻿vversion: "3.8"
 
 services:
-  backend:
-seversion: "3.9"
+version: "3.9"
 
 services:
   openbao:
