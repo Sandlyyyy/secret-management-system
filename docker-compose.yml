@@ -40,21 +40,15 @@ services:
     restart: unless-stopped
 
   # 🏛️ OpenBao
-  openbao:
-    image: openbao/openbao:2.4.1
-    container_name: sms-openbao
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${OPENBAO_ROOT_TOKEN}
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
-    ports:
-      - "8200:8200"
-    volumes:
-      - openbao_data:/vault/data
-    cap_add:
-      - IPC_LOCK
-    networks:
-      - sms-network
-    restart: unless-stopped
+  oopenbao:
+  image: openbao/openbao:2.4.1
+  container_name: openbao
+  environment:
+    - OPENBAO_ROOT_TOKEN=${OPENBAO_ROOT_TOKEN}
+  ports:
+    - "8080:8080"
+  restart: unless-stopped
+
 
   # ⚙️ Backend Service
   backend:
