@@ -407,21 +407,44 @@
             justify-content: flex-end;
             margin-top: 1.5rem;
         }
+
+        /* FORM STYLES */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-info);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script>
-         // пример запроса к API backend
-  fetch('http://backend:8000/secrets/SecretName')
-    .then(response => response.json())
-    .then(data => {
-      console.log('Секрет получен:', data);
-      // здесь можно обновить элементы страницы, например:
-      document.getElementById('secretOutput').innerText = data.password;
-    })
-    .catch(err => console.error(err));
         // 🚀 ГЛАВНЫЙ КЛАСС ПРИЛОЖЕНИЯ
         class SecretVaultApp {
             constructor() {
@@ -479,6 +502,12 @@
                                         <i class="fas fa-search"></i>
                                         <input type="text" id="searchRequests" placeholder="Поиск заявок...">
                                     </div>
+                                </div>
+
+                                <div style="margin-bottom: 2rem;">
+                                    <button class="btn btn-primary" onclick="app.showCreateRequestForm()">
+                                        <i class="fas fa-plus"></i> Создать заявку
+                                    </button>
                                 </div>
 
                                 <div class="filter-buttons">
@@ -559,7 +588,49 @@
                             </div>
                         </div>
                     </div>
-                    <div id="secretOutput">Секрет появится здесь</div>
+
+                    <!-- Модальное окно создания заявки -->
+                    <div id="createRequestModal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Создание заявки на секрет</h3>
+                                <button class="close-btn" onclick="app.closeCreateModal()">&times;</button>
+                            </div>
+                            
+                            <div style="display: grid; gap: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-label">Название секрета *</label>
+                                    <input type="text" id="requestSecretName" class="form-input" 
+                                           placeholder="Введите название секрета">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Тип секрета *</label>
+                                    <select id="requestSecretType" class="form-input">
+                                        <option value="database">База данных</option>
+                                        <option value="api">API Ключ</option>
+                                        <option value="ssh">SSH Ключ</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Обоснование *</label>
+                                    <textarea id="requestJustification" rows="4" class="form-input form-textarea"
+                                              placeholder="Опишите для чего вам нужен доступ..."></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Срок доступа (дней) *</label>
+                                    <input type="number" id="requestDuration" value="7" min="1" max="365" class="form-input">
+                                </div>
+                            </div>
+                            
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" onclick="app.closeCreateModal()">Отмена</button>
+                                <button class="btn btn-primary" onclick="app.createNewRequest()">Создать заявку</button>
+                            </div>
+                        </div>
+                    </div>
                 `;
             }
 
@@ -606,6 +677,13 @@
                     btn.addEventListener('click', () => {
                         this.closeModal();
                     });
+                });
+
+                // Enter в форме создания заявки
+                document.getElementById('requestSecretName').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.createNewRequest();
+                    }
                 });
             }
 
@@ -660,6 +738,9 @@
                             <div>
                                 <div class="request-title">${request.secretName}</div>
                                 <div class="request-user">Запросил: ${request.userName}</div>
+                                <div style="color: #a0aec0; font-size: 0.8rem; margin-top: 0.25rem;">
+                                    Тип: ${this.getTypeText(request.type)}
+                                </div>
                             </div>
                             <span class="request-status status-${request.status}">
                                 ${this.getStatusText(request.status)}
@@ -713,6 +794,86 @@
                 `).join('');
             }
 
+            // 🆕 ПОКАЗАТЬ ФОРМУ СОЗДАНИЯ ЗАЯВКИ
+            showCreateRequestForm() {
+                document.getElementById('createRequestModal').style.display = 'flex';
+                document.getElementById('requestSecretName').focus();
+            }
+
+            // 🆕 ЗАКРЫТЬ ФОРМУ СОЗДАНИЯ
+            closeCreateModal() {
+                document.getElementById('createRequestModal').style.display = 'none';
+                this.clearCreateForm();
+            }
+
+            // 🆕 ОЧИСТИТЬ ФОРМУ
+            clearCreateForm() {
+                document.getElementById('requestSecretName').value = '';
+                document.getElementById('requestSecretType').value = 'database';
+                document.getElementById('requestJustification').value = '';
+                document.getElementById('requestDuration').value = '7';
+            }
+
+            // 🆕 СОЗДАТЬ НОВУЮ ЗАЯВКУ
+            async createNewRequest() {
+                const secretName = document.getElementById('requestSecretName').value.trim();
+                const secretType = document.getElementById('requestSecretType').value;
+                const justification = document.getElementById('requestJustification').value.trim();
+                const duration = parseInt(document.getElementById('requestDuration').value);
+
+                if (!secretName || !justification) {
+                    this.showNotification('❌ Заполните все обязательные поля');
+                    return;
+                }
+
+                if (duration < 1 || duration > 365) {
+                    this.showNotification('❌ Срок доступа должен быть от 1 до 365 дней');
+                    return;
+                }
+
+                // Создаем новую заявку
+                const newRequest = {
+                    id: Date.now().toString(),
+                    secretName: secretName,
+                    userName: 'Текущий пользователь',
+                    description: justification,
+                    status: 'pending',
+                    duration: duration,
+                    createdAt: new Date().toISOString(),
+                    type: secretType
+                };
+
+                // Добавляем в массив заявок (в начало)
+                this.requests.unshift(newRequest);
+                
+                // Закрываем модальное окно
+                this.closeCreateModal();
+                
+                // Показываем уведомление
+                this.showNotification('✅ Заявка создана и отправлена на рассмотрение');
+                
+                // Обновляем интерфейс
+                this.loadRequests();
+                
+                // 🔄 ЗДЕСЬ МОЖНО ДОБАВИТЬ ВЫЗОВ API К БЭКЕНДУ:
+                /*
+                try {
+                    await fetch('http://localhost:8000/api/secret-requests', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            secret_name: secretName,
+                            secret_type: secretType, 
+                            justification: justification,
+                            duration: duration
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error creating request:', error);
+                }
+                */
+            }
+
             // ✅ ОДОБРИТЬ ЗАЯВКУ
             async approveRequest(requestId) {
                 if (await this.showConfirm('Одобрить заявку?')) {
@@ -742,6 +903,21 @@
                 const secret = this.secrets.find(s => s.id === secretId);
                 if (secret && await this.showConfirm(`Запросить доступ к "${secret.name}"?`)) {
                     this.showNotification(`📋 Запрос доступа к "${secret.name}" отправлен`);
+                    
+                    // Автоматически создаем заявку на этот секрет
+                    const newRequest = {
+                        id: Date.now().toString(),
+                        secretName: secret.name,
+                        userName: 'Текущий пользователь',
+                        description: `Запрос доступа к ${secret.name} через кнопку "Запросить доступ"`,
+                        status: 'pending',
+                        duration: 7,
+                        createdAt: new Date().toISOString(),
+                        type: secret.type
+                    };
+                    
+                    this.requests.unshift(newRequest);
+                    this.showPage('requests');
                 }
             }
 
@@ -752,7 +928,8 @@
                 } else {
                     const filtered = this.requests.filter(request => 
                         request.secretName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        request.userName.toLowerCase().includes(searchTerm.toLowerCase())
+                        request.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        request.description.toLowerCase().includes(searchTerm.toLowerCase())
                     );
                     this.renderRequests(filtered);
                 }
@@ -810,7 +987,27 @@
 
             // 🔔 УВЕДОМЛЕНИЯ
             showNotification(message) {
-                alert(message); // Простое уведомление
+                // Простое уведомление - можно заменить на красивый toast
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--bg-light);
+                    color: var(--text-primary);
+                    padding: 1rem 1.5rem;
+                    border-radius: 8px;
+                    border-left: 4px solid var(--accent-success);
+                    box-shadow: var(--shadow-lg);
+                    z-index: 1001;
+                    max-width: 300px;
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 3000);
             }
 
             // ❌ ЗАКРЫТЬ МОДАЛЬНОЕ ОКНО
@@ -847,7 +1044,13 @@
             }
 
             formatDate(dateString) {
-                return new Date(dateString).toLocaleDateString('ru-RU');
+                return new Date(dateString).toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             }
 
             // 🎲 ТЕСТОВЫЕ ДАННЫЕ
@@ -860,7 +1063,8 @@
                         description: 'Нужен доступ для дебага критического бага в продакшене',
                         status: 'pending',
                         duration: 7,
-                        createdAt: '2024-01-15T10:00:00Z'
+                        createdAt: '2024-01-15T10:00:00Z',
+                        type: 'database'
                     },
                     {
                         id: '2', 
@@ -869,7 +1073,8 @@
                         description: 'Разработка новой интеграции с платежной системой',
                         status: 'approved',
                         duration: 30,
-                        createdAt: '2024-01-14T15:30:00Z'
+                        createdAt: '2024-01-14T15:30:00Z',
+                        type: 'api'
                     },
                     {
                         id: '3',
@@ -878,7 +1083,8 @@
                         description: 'Настройка мониторинга и алертинга',
                         status: 'pending', 
                         duration: 14,
-                        createdAt: '2024-01-16T09:15:00Z'
+                        createdAt: '2024-01-16T09:15:00Z',
+                        type: 'ssh'
                     },
                     {
                         id: '4',
@@ -887,7 +1093,8 @@
                         description: 'Тестирование новых функций',
                         status: 'rejected',
                         duration: 5,
-                        createdAt: '2024-01-13T11:20:00Z'
+                        createdAt: '2024-01-13T11:20:00Z',
+                        type: 'database'
                     }
                 ];
 
@@ -918,19 +1125,4 @@
                     },
                     {
                         id: 's5',
-                        name: 'Email Service API',
-                        description: 'Ключи для сервиса отправки email',
-                        type: 'api'
-                    }
-                ];
-            }
-        }
-
-        // 🚀 ЗАПУСК ПРИЛОЖЕНИЯ
-        let app;
-        document.addEventListener('DOMContentLoaded', () => {
-            app = new SecretVaultApp();
-        });
-    </script>
-</body>
-</html>
+                        name:

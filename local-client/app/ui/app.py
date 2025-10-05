@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
+import webbrowser
 from core.database import Database, SecretType
 from core.services import AuthService, SecretService, AuditService
 from .themes import ThemeManager
@@ -244,7 +245,7 @@ class SecureVaultApp:
         
         tk.Label(
             user_info_frame,
-            text="Панель управления секретами",
+            text="Кошелек секретов (только для использования)",
             font=("Arial", 14),
             fg=self.theme.colors.text_secondary,
             bg="#050505"
@@ -254,13 +255,7 @@ class SecureVaultApp:
         controls_frame = tk.Frame(header, bg="#050505")
         controls_frame.pack(side='right', padx=40, pady=30)
         
-        ModernButton(
-            controls_frame,
-            "➕ Новый запрос",
-            self.show_request_dialog,
-            width=160,
-            height=45
-        ).pack(side='left', padx=8)
+        # УБРАНА кнопка "➕ Новый запрос" - создание только через веб-портал
         
         ModernButton(
             controls_frame,
@@ -298,6 +293,10 @@ class SecureVaultApp:
         
         # Stats
         self.show_stats(content)
+        
+        # Search
+        self.show_search(content)
+        
         # Secrets
         self.show_secrets(content)
     
@@ -327,6 +326,174 @@ class SecureVaultApp:
                 bg=self.theme.colors.surface
             ).pack()
     
+    def show_search(self, parent):
+        """Поле поиска секретов"""
+        search_frame = tk.Frame(parent, bg=self.theme.colors.background)
+        search_frame.pack(fill='x', pady=(0, 20))
+        
+        # Search label
+        tk.Label(
+            search_frame,
+            text="🔍 Поиск секретов:",
+            font=("Arial", 16, "bold"),
+            fg=self.theme.colors.text_primary,
+            bg=self.theme.colors.background
+        ).pack(side='left', padx=(0, 15))
+        
+        # Search entry
+        self.search_var = tk.StringVar()
+        search_entry = tk.Entry(
+            search_frame,
+            textvariable=self.search_var,
+            font=("Arial", 14),
+            bg=self.theme.colors.surface,
+            fg=self.theme.colors.text_primary,
+            insertbackground=self.theme.colors.text_primary,
+            width=40
+        )
+        search_entry.pack(side='left', padx=(0, 15))
+        
+        # Search button
+        ModernButton(
+            search_frame,
+            "Найти",
+            self.perform_search,
+            width=100,
+            height=40
+        ).pack(side='left', padx=(0, 15))
+        
+        # Request access button (если не нашли)
+        ModernButton(
+            search_frame,
+            "🌐 Не нашли? Запросить доступ",
+            self.show_request_dialog,
+            width=280,
+            height=40,
+            bg_color="#3498db",
+            hover_color="#2980b9"
+        ).pack(side='left')
+        
+        # Bind Enter key to search
+        search_entry.bind('<Return>', lambda e: self.perform_search())
+    
+    def perform_search(self, event=None):
+        """Выполняет поиск секретов"""
+        query = self.search_var.get().strip()
+        
+        if not query:
+            # Если поиск пустой, показываем все секреты
+            self.show_secrets_after_search(self.secret_service.get_user_secrets())
+            return
+        
+        # Ищем секреты
+        user = self.auth_service.get_current_user()
+        found_secrets = self.database.search_secrets(query, user.username)
+        
+        if not found_secrets:
+            # Если ничего не найдено, показываем сообщение
+            self.show_search_no_results(query)
+        else:
+            # Показываем найденные секреты
+            self.show_secrets_after_search(found_secrets)
+    
+    def show_search_no_results(self, query):
+        """Показывает сообщение когда секрет не найден"""
+        # Очищаем текущие секреты
+        for widget in self.root.winfo_children():
+            if hasattr(widget, '_name') and widget._name == 'secrets_container':
+                widget.destroy()
+        
+        # Создаем контейнер для сообщения
+        container = tk.Frame(self.root, bg=self.theme.colors.background, name='secrets_container')
+        container.pack(fill='both', expand=True, padx=40, pady=20)
+        
+        message_frame = tk.Frame(
+            container,
+            bg=self.theme.colors.surface,
+            relief='raised',
+            bd=1
+        )
+        message_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.6, relheight=0.4)
+        
+        tk.Label(
+            message_frame,
+            text=f"🔍 Секрет '{query}' не найден",
+            font=("Arial", 20, "bold"),
+            fg=self.theme.colors.text_secondary,
+            bg=self.theme.colors.surface
+        ).pack(expand=True, pady=(80, 20))
+        
+        tk.Label(
+            message_frame,
+            text="Запросите доступ к этому секрету через веб-портал",
+            font=("Arial", 16),
+            fg=self.theme.colors.text_secondary,
+            bg=self.theme.colors.surface
+        ).pack(pady=(0, 40))
+        
+        ModernButton(
+            message_frame,
+            f"🌐 Запросить доступ к '{query}'",
+            self.show_request_dialog,
+            width=350,
+            height=60
+        ).pack(pady=20)
+    
+    def show_secrets_after_search(self, secrets):
+        """Показывает секреты после поиска"""
+        # Очищаем текущие секреты
+        for widget in self.root.winfo_children():
+            if hasattr(widget, '_name') and widget._name == 'secrets_container':
+                widget.destroy()
+        
+        # Создаем новый контейнер
+        container = tk.Frame(self.root, bg=self.theme.colors.background, name='secrets_container')
+        container.pack(fill='both', expand=True, padx=40, pady=20)
+        
+        # Заголовок
+        title_frame = tk.Frame(container, bg=self.theme.colors.background)
+        title_frame.pack(fill='x', pady=(0, 20))
+        
+        tk.Label(
+            title_frame,
+            text="📁 РЕЗУЛЬТАТЫ ПОИСКА" if self.search_var.get() else "📁 МОИ СЕКРЕТЫ",
+            font=("Arial", 24, "bold"),
+            fg=self.theme.colors.primary,
+            bg=self.theme.colors.background
+        ).pack(anchor='w')
+        
+        # Показываем секреты
+        if not secrets:
+            self.show_empty_state(container)
+        else:
+            # Код для отображения списка секретов
+            secrets_container = tk.Frame(container, bg=self.theme.colors.background)
+            secrets_container.pack(fill='both', expand=True)
+            
+            canvas = tk.Canvas(secrets_container, bg=self.theme.colors.background, highlightthickness=0)
+            scrollbar = ttk.Scrollbar(secrets_container, orient="vertical", command=canvas.yview)
+            scrollable_frame = tk.Frame(canvas, bg=self.theme.colors.background)
+            
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+            
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            for secret in secrets:
+                from .components.widgets import SecretCard
+                SecretCard(
+                    scrollable_frame,
+                    secret,
+                    on_copy=self.copy_secret,
+                    on_view=self.view_secret
+                ).pack(fill='x', pady=10, padx=5)
+            
+            canvas.pack(side="left", fill="both", expand=True)
+            scrollbar.pack(side="right", fill="y")
+    
     def show_secrets(self, parent):
         # Title
         title_frame = tk.Frame(parent, bg=self.theme.colors.background)
@@ -341,7 +508,7 @@ class SecureVaultApp:
         ).pack(anchor='w')
         
         # Secrets container with scroll
-        container = tk.Frame(parent, bg=self.theme.colors.background)
+        container = tk.Frame(parent, bg=self.theme.colors.background, name='secrets_container')
         container.pack(fill='both', expand=True)
         
         canvas = tk.Canvas(container, bg=self.theme.colors.background, highlightthickness=0)
@@ -392,7 +559,7 @@ class SecureVaultApp:
         
         tk.Label(
             empty_frame,
-            text="Запросите ваш первый секрет для начала работы",
+            text="Запросите ваш первый секрет через веб-портал",
             font=("Arial", 16),
             fg=self.theme.colors.text_secondary,
             bg=self.theme.colors.surface
@@ -400,9 +567,9 @@ class SecureVaultApp:
         
         ModernButton(
             empty_frame,
-            "📝 Создать первый запрос",
+            "🌐 Запросить доступ через веб-портал",
             self.show_request_dialog,
-            width=300,
+            width=350,
             height=60
         ).pack(pady=20)
     
@@ -529,166 +696,22 @@ class SecureVaultApp:
         )
     
     def show_request_dialog(self):
-        dialog = tk.Toplevel(self.root)
-        dialog.title("📝 Запрос нового секрета")
-        # Делаем диалог полноэкранным
-        dialog.attributes('-fullscreen', True)
-        dialog.configure(bg=self.theme.colors.background)
-        dialog.transient(self.root)
-        dialog.grab_set()
+        """Перенаправление на веб-портал для создания заявки"""
+        web_portal_url = "http://192.168.0.77:3000"  # IP твоей виртуальной машины
         
-        # Добавляем кнопку закрытия для диалога
-        close_dialog_btn = tk.Button(
-            dialog,
-            text="❌",
-            command=dialog.destroy,
-            font=("Arial", 14),
-            bg=self.theme.colors.error,
-            fg="white",
-            border=0,
-            cursor="hand2"
-        )
-        close_dialog_btn.place(relx=0.98, rely=0.02, anchor="ne")
-        
-        main_frame = tk.Frame(dialog, bg=self.theme.colors.background)
-        main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.8, relheight=0.8)
-        
-        # Title
-        tk.Label(
-            main_frame,
-            text="📝 ЗАПРОС НОВОГО СЕКРЕТА",
-            font=("Arial", 24, "bold"),
-            fg=self.theme.colors.primary,
-            bg=self.theme.colors.background
-        ).pack(pady=(0, 40))
-        
-        # Secret type
-        type_frame = tk.Frame(main_frame, bg=self.theme.colors.background)
-        type_frame.pack(fill='x', pady=(0, 30))
-        
-        tk.Label(
-            type_frame,
-            text="Тип секрета:",
-            font=("Arial", 16, "bold"),
-            fg=self.theme.colors.text_primary,
-            bg=self.theme.colors.background
-        ).pack(anchor='w', pady=(0, 15))
-        
-        self.secret_type = tk.StringVar(value=SecretType.CUSTOM.value)
-        
-        types = [
-            ("🗄️ База данных", SecretType.DATABASE),
-            ("🔑 API Ключ", SecretType.API),
-            ("☁️ Облачный сервис", SecretType.CLOUD),
-            ("🛡️ Безопасность", SecretType.SECURITY),
-            ("📧 Email", SecretType.EMAIL),
-            ("📝 Пользовательский", SecretType.CUSTOM)
-        ]
-        
-        type_buttons_frame = tk.Frame(type_frame, bg=self.theme.colors.background)
-        type_buttons_frame.pack(fill='x')
-        
-        for text, secret_type in types:
-            btn = tk.Radiobutton(
-                type_buttons_frame,
-                text=text,
-                variable=self.secret_type,
-                value=secret_type.value,
-                font=("Arial", 14),
-                fg=self.theme.colors.text_primary,
-                bg=self.theme.colors.background,
-                selectcolor=self.theme.colors.surface,
-                activebackground=self.theme.colors.background,
-                activeforeground=self.theme.colors.primary
+        try:
+            webbrowser.open(web_portal_url)
+            messagebox.showinfo(
+                "🌐 Веб-портал", 
+                f"Открывается веб-портал для создания заявки:\n{web_portal_url}\n\n"
+                "Пожалуйста, создайте заявку на доступ к нужному секрету через веб-интерфейс."
             )
-            btn.pack(side='left', padx=(0, 25))
-        
-        # Name
-        tk.Label(
-            main_frame,
-            text="Название секрета:",
-            font=("Arial", 16, "bold"),
-            fg=self.theme.colors.text_primary,
-            bg=self.theme.colors.background
-        ).pack(anchor='w', pady=(0, 15))
-        
-        name_entry = tk.Entry(
-            main_frame,
-            font=("Arial", 16),
-            bg=self.theme.colors.surface,
-            fg=self.theme.colors.text_primary,
-            insertbackground=self.theme.colors.text_primary
-        )
-        name_entry.pack(fill='x', pady=(0, 30))
-        
-        # Description
-        tk.Label(
-            main_frame,
-            text="Описание и назначение:",
-            font=("Arial", 16, "bold"),
-            fg=self.theme.colors.text_primary,
-            bg=self.theme.colors.background
-        ).pack(anchor='w', pady=(0, 15))
-        
-        desc_text = scrolledtext.ScrolledText(
-            main_frame,
-            height=12,
-            font=("Arial", 14),
-            bg=self.theme.colors.surface,
-            fg=self.theme.colors.text_primary,
-            insertbackground=self.theme.colors.text_primary,
-            wrap=tk.WORD
-        )
-        desc_text.pack(fill='both', expand=True, pady=(0, 40))
-        
-        # Buttons
-        button_frame = tk.Frame(main_frame, bg=self.theme.colors.background)
-        button_frame.pack(fill='x')
-        
-        def submit_request():
-            name = name_entry.get().strip()
-            description = desc_text.get("1.0", "end-1c").strip()
-            s_type = SecretType(self.secret_type.get())
-            
-            if not name:
-                messagebox.showerror("Ошибка", "Введите название секрета", parent=dialog)
-                return
-            
-            if not description:
-                messagebox.showerror("Ошибка", "Введите описание секрета", parent=dialog)
-                return
-            
-            if self.secret_service.request_secret(name, description, s_type):
-                messagebox.showinfo(
-                    "✅ Успех!", 
-                    "Запрос на секрет отправлен на согласование!\n\n"
-                    "Вы будете уведомлены, когда секрет будет одобрен.",
-                    parent=dialog
-                )
-                dialog.destroy()
-                self.show_dashboard()  # Refresh
-            else:
-                messagebox.showerror("Ошибка", "Не удалось отправить запрос", parent=dialog)
-        
-        ModernButton(
-            button_frame,
-            "📨 Отправить запрос",
-            submit_request,
-            width=250,
-            height=60
-        ).pack(side='left', padx=(0, 25))
-        
-        ModernButton(
-            button_frame,
-            "❌ Отмена",
-            dialog.destroy,
-            width=180,
-            height=60,
-            bg_color="#333333",
-            hover_color="#555555"
-        ).pack(side='left')
-        
-        name_entry.focus()
+        except Exception as e:
+            messagebox.showinfo(
+                "🌐 Веб-портал", 
+                f"Перейдите по ссылке для создания заявки:\n{web_portal_url}\n\n"
+                "Создайте заявку на доступ к нужному секрету через веб-интерфейс."
+            )
     
     def show_audit_dialog(self):
         dialog = tk.Toplevel(self.root)
