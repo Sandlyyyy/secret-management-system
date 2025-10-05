@@ -12,14 +12,16 @@
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  openbao:
-    image: openbao/openbao:2.4.1
-    container_name: openbao
-    environment:
-      OPENBAO_ROOT_TOKEN: ${OPENBAO_ROOT_TOKEN}
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
+openbao:
+  image: openbao/openbao:2.4.1
+  container_name: openbao
+  build: false   # чтобы не пытался билдить
+  environment:
+    OPENBAO_ROOT_TOKEN: ${OPENBAO_ROOT_TOKEN}
+  ports:
+    - "8080:8080"
+  restart: unless-stopped
+
 
   backend:
     build:
