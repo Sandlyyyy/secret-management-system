@@ -1,19 +1,26 @@
-﻿version: "3.8"
+﻿vversion: "3.8"
 
 services:
   backend:
     build: ./backend
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/secrets
+      FERNET_KEY: "YOUR_KEY_HERE"
+      KEYCLOAK_URL: "http://keycloak:8080"
+      OPENBAO_URL: "http://openbao:5000"
     depends_on:
       - db
       - keycloak
       - openbao
-    environment:
-      DATABASE_URL: postgresql://user:password@db:5432/secrets
-      FERNET_KEY: "YOUR_GENERATED_KEY_HERE"
-      KEYCLOAK_URL: "http://keycloak:8080"
-      OPENBAO_URL: "http://openbao:5000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"  # порт 3000 для браузера, внутри Nginx 80
+    depends_on:
+      - backend
 
   db:
     image: postgres:16
