@@ -44,3 +44,11 @@ services:
     image: openbao/openbao:latest
     ports:
       - "5000:5000"
+  nginx:
+    build: ./nginx
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
